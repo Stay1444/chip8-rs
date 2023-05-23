@@ -76,7 +76,9 @@ impl VM {
         })?;
 
         let mut increment: usize = 2;
-
+        
+        dbg!(&instruction);
+        
         match instruction {
             Instruction::DisplayClear => { self.display.clear(false) },
             Instruction::SubReturn => {
@@ -109,7 +111,7 @@ impl VM {
                     pixel = self.memory[(self.index_register + y) as usize] as i32;
 
                     for x in 0..8 {
-                        if pixel & (0x80 >> y) > 0 {
+                        if pixel & (0x80 >> x) > 0 {
                             let draw_x = (dx + x) % display::DISPLAY_WIDTH;
                             let draw_y = (dy + y as usize) % display::DISPLAY_HEIGHT;
 
@@ -266,7 +268,6 @@ impl VM {
         }
 
         self.program_counter += increment;
-        debug!("Ins: {:?} PC: {}", instruction, self.program_counter);
 
         return Ok(());
     }
