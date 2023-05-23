@@ -77,7 +77,7 @@ impl VM {
 
         let mut increment: usize = 2;
         
-        dbg!(&instruction);
+        //dbg!(&instruction);
         
         match instruction {
             Instruction::DisplayClear => { self.display.clear(false) },
@@ -97,7 +97,7 @@ impl VM {
                 increment = 0;
             },
             Instruction::SetVX { index, value } => self.variable_registers[index] = value,
-            Instruction::AddVX { index, value } => self.variable_registers[index] += value,
+            Instruction::AddVX { index, value } => self.variable_registers[index] = u8::wrapping_add(self.variable_registers[index], value),
             Instruction::SetIR { value } => self.index_register = value,
             Instruction::Draw { vx, vy, height } => {
                 let dx = self.variable_registers[vx] as usize % display::DISPLAY_WIDTH;
@@ -164,7 +164,7 @@ impl VM {
                     self.variable_registers[0xF] = 0;
                 }
 
-                self.variable_registers[vx] += self.variable_registers[vy];
+                self.variable_registers[vx] = u8::wrapping_add(self.variable_registers[vx], self.variable_registers[vy]);
             },
             Instruction::MSubWithBorrow { vx, vy } => {
                 if self.variable_registers[vx] > self.variable_registers[vy] {
@@ -172,7 +172,7 @@ impl VM {
                 } else {
                     self.variable_registers[0xF] = 0;
                 }
-                self.variable_registers[vx] -= self.variable_registers[vy];
+                self.variable_registers[vx] = u8::wrapping_sub(self.variable_registers[vx], self.variable_registers[vy])
             },
             Instruction::MSubInvWithBorrow { vx, vy } => {
                 if self.variable_registers[vy] > self.variable_registers[vx] {
@@ -182,6 +182,7 @@ impl VM {
                 }
 
                 self.variable_registers[vx] = self.variable_registers[vy] - self.variable_registers[vx];
+                self.variable_registers[vx] = u8::wrapping_sub(self.variable_registers[vy], self.variable_registers[vx])
             },
             Instruction::MShiftRight { vx, vy } => {
                 if self.shift_legacy {

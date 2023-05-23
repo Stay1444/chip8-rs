@@ -14,7 +14,7 @@ async fn main() {
 
     vm.lock().unwrap().mem_copy(&chip8::FONT_DATA, 0);
 
-    vm.lock().unwrap().load_program_from_file(&std::path::Path::new("./roms/test_opcode.ch8"), 0x200);
+    vm.lock().unwrap().load_program_from_file(&std::path::Path::new("./roms/ibm.ch8"), 0x200);
 
     vm.lock().unwrap().program_counter = 0x200;
 
@@ -88,7 +88,6 @@ async fn main() {
 
     fn tick(vm: Arc<Mutex<chip8::VM>>) {
         loop {
-            std::thread::sleep(Duration::from_millis(15));
             vm.lock().unwrap().tick().unwrap();
         }
     }
