@@ -1,6 +1,9 @@
 use macroquad::prelude::debug;
+use rand::Rng;
 
-use super::{Instruction, InstructionDecodeError, Stack, Display, instruction};
+use crate::chip8::display;
+
+use super::{Instruction, InstructionDecodeError, Stack, Display, instruction, Keyboard};
 
 pub const MEMORY_SIZE: usize = 4096;
 pub const VREG_COUNT: usize = 16;
@@ -13,6 +16,7 @@ pub struct VM {
     pub sound_timer: u8,
     pub variable_registers: [u8; VREG_COUNT],
     pub stack: Stack,
+    pub keyboard: Keyboard,
     pub display: Display,
     pub shift_legacy: bool,
     pub chip48_mode: bool
@@ -34,8 +38,9 @@ impl VM {
             delay_timer: 0,
             sound_timer: 0,
             variable_registers: [0; VREG_COUNT],
-            stack: Stack {  },
-            display: Display {  },
+            stack: Stack::new(),
+            keyboard: Keyboard::new(),
+            display: Display::new(),
             shift_legacy: false,
             chip48_mode: true
         }
@@ -92,7 +97,30 @@ impl VM {
             Instruction::SetVX { index, value } => self.variable_registers[index] = value,
             Instruction::AddVX { index, value } => self.variable_registers[index] += value,
             Instruction::SetIR { value } => self.index_register = value,
-            Instruction::Draw { x, y, height } => todo!("Draw"),
+            Instruction::Draw { vx, vy, height } => {
+                let dx = self.variable_registers[vx] as usize % display::DISPLAY_WIDTH;
+                let dy = self.variable_registers[vy] as usize % display::DISPLAY_HEIGHT;
+
+                let mut pixel: i32;
+
+                self.variable_registers[0xF] = 0;
+
+                for y in 0..height {
+                    pixel = self.memory[(self.index_register + y) as usize] as i32;
+
+                    for x in 0..8 {
+                        if pixel & (0x80 >> y) > 0 {
+                            let draw_x = (dx + x) % display::DISPLAY_WIDTH;
+                            let draw_y = (dy + y as usize) % display::DISPLAY_HEIGHT;
+
+                            if self.display.get(draw_x, draw_y) {
+                                self.variable_registers[0xF]= 1;
+                            }
+                            self.display.flip(draw_x, draw_y);
+                        }
+                    }
+                }
+            },
             Instruction::SubCall { target } => {
                 self.stack.push((self.program_counter + increment).try_into().unwrap()).map_err(|err|  {
                     match err {
@@ -179,9 +207,62 @@ impl VM {
                 }
                 increment = 0;
             },
-            Instruction::Random { vx, nn } => todo!("RANDOM"),
-            
+            Instruction::Random { vx, nn } => self.variable_registers[vx] = rand::thread_rng().gen_range(0..=255) & nn,
+            Instruction::SkipIfKey { vx } => {
+                if self.keyboard.keys[self.variable_registers[vx] as usize] {
+                    increment += 2;
+                }
+            },
+            Instruction::SkipIfNotKey { vx } => {
+                if !self.keyboard.keys[self.variable_registers[vx] as usize] {
+                    increment += 2;
+                }
+            },
+            Instruction::SetVXToDelayTimer { vx } => self.variable_registers[vx] = self.delay_timer,
+            Instruction::SetDelayTimerToVX { vx } => self.delay_timer = self.variable_registers[vx],
+            Instruction::SetSoundTimerToVX { vx } => self.sound_timer = self.variable_registers[vx],
+            Instruction::AddVXToIndexRegister { vx } => {
+                self.index_register += self.variable_registers[vx] as u16;
 
+                if self.index_register > 0xFFF {
+                    self.variable_registers[0xF] = 1;
+                } else {
+                    self.variable_registers[0xF] = 0;
+                }
+            },
+            Instruction::GetKeyBlock { vx } => {
+                if !self.keyboard.keys[self.variable_registers[vx] as usize] {
+                    increment = 0;
+                }
+            },
+            Instruction::FontChar { vx } => {
+                let char = self.variable_registers[vx] & 0x0F;
+                let address = char * 5;
+                self.index_register = address as u16;
+            },
+            Instruction::BinaryCodedDecimalConversion { vx } => {
+                let mut value = self.variable_registers[vx];
+
+                let ones = value % 10;
+                value /= 10;
+                let tens = value % 10;
+                value /= 10;
+                let hundreds = value % 10;
+
+                self.memory[self.index_register as usize] = hundreds;
+                self.memory[(self.index_register + 1) as usize] = tens;
+                self.memory[(self.index_register + 2) as usize] = ones;
+            }
+            Instruction::SaveVXToMem { vx } => {
+                for i in 0..=vx {
+                    self.memory[self.index_register as usize + i] = self.variable_registers[i];
+                }
+            },
+            Instruction::LoadVXFromMem { vx } => {
+                for i in 0..=vx {
+                    self.variable_registers[i] = self.memory[self.index_register as usize + i];
+                } 
+            }
         }
 
         self.program_counter += increment;
