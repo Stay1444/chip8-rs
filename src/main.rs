@@ -10,11 +10,12 @@ const PIXEL_MARGIN: usize = 0;
 #[macroquad::main("BasicShapes")]
 async fn main() {
 
+
     let vm = Arc::new(Mutex::new(chip8::VM::new()));
 
     vm.lock().unwrap().mem_copy(&chip8::FONT_DATA, 0);
 
-    vm.lock().unwrap().load_program_from_file(&std::path::Path::new("./roms/ibm.ch8"), 0x200);
+    vm.lock().unwrap().load_program_from_file(&std::path::Path::new("./roms/b1.ch8"), 0x200);
 
     vm.lock().unwrap().program_counter = 0x200;
 
@@ -25,6 +26,7 @@ async fn main() {
             tick(vm_clone);
         });
     }
+
 
     loop {
         {
@@ -81,13 +83,21 @@ async fn main() {
             vm_lock.keyboard.keys[0x0] = is_key_down(KeyCode::X);
             vm_lock.keyboard.keys[0xB] = is_key_down(KeyCode::C);
             vm_lock.keyboard.keys[0xF] = is_key_down(KeyCode::V);
-            
+
+            if vm_lock.delay_timer > 0 {
+                vm_lock.delay_timer -= 1;
+            }
+
+            if vm_lock.sound_timer > 0 {
+                vm_lock.sound_timer -= 1;
+            }
         }
         next_frame().await
     }
 
     fn tick(vm: Arc<Mutex<chip8::VM>>) {
         loop {
+            std::thread::sleep(Duration::from_millis(2));
             vm.lock().unwrap().tick().unwrap();
         }
     }

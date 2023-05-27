@@ -1,3 +1,5 @@
+use core::panic;
+
 use macroquad::prelude::debug;
 use rand::Rng;
 
@@ -57,6 +59,8 @@ impl VM {
                 buffer.reserve_exact(metadata.len() as usize);
             }
             std::io::Read::read_to_end(&mut file, &mut buffer).ok();
+        } else {
+            panic!("Error reading file!");
         }
 
         // Load the program into memory at the specified location

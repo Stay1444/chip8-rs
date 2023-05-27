@@ -5,9 +5,8 @@ pub enum InstructionDecodeError {
 
 impl std::fmt::Display for InstructionDecodeError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "invalid instruction")
+        return write!(f, "invalid instruction");
     }
-    
 }
 #[derive(Debug)]
 pub enum Instruction {
