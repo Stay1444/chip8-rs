@@ -1,6 +1,6 @@
 mod chip8;
 
-use std::{sync::{Mutex, Arc}, hint::spin_loop, time::Duration};
+use std::{sync::{Mutex, Arc}, time::Duration, env, process::ExitCode};
 
 use macroquad::prelude::*;
 
@@ -9,13 +9,18 @@ const PIXEL_MARGIN: usize = 0;
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
+    let args: Vec<String> = env::args().collect();
 
+    if args.len() < 2 {
+        println!("Usage: chip8 ./path/to/rom");
+        return;
+    }
 
     let vm = Arc::new(Mutex::new(chip8::VM::new()));
 
     vm.lock().unwrap().mem_copy(&chip8::FONT_DATA, 0);
 
-    vm.lock().unwrap().load_program_from_file(&std::path::Path::new("./roms/b1.ch8"), 0x200);
+    vm.lock().unwrap().load_program_from_file(&std::path::Path::new(&args[1]), 0x200);
 
     vm.lock().unwrap().program_counter = 0x200;
 
